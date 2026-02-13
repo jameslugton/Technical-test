@@ -347,17 +347,21 @@ class NCX_CP_API_Gateway extends WC_Payment_Gateway {
         $order->save();
 
         // Tell JS to execute the already-mounted widget (card fields are already filled).
-        // redirect = order-pay URL as safety net: if JS ever fails to intercept,
-        // WC will send the customer here instead of to an empty string (which
-        // caused nginx to 404 on /checkout/index.html).
+        // redirect = false — same as nochexapi's orderStatusHandler('pending').
+        // Our JS handler (checkout_place_order) always intercepts and makes its
+        // own fetch(); WC's checkout.js never follows the redirect.  Using false
+        // prevents WC from ever sending the customer to order-pay (which would
+        // show a SECOND card form).
         return [
-            'result' => 'success',
-            'redirect' => $order->get_checkout_payment_url(true),
-            'payment_method' => $this->id,
+            'result'   => 'success',
+            'redirect' => false,
+            'refresh'  => false,
+            'reload'   => false,
+            'pending'  => true,
+            'execute'  => true,
             'checkout_id' => $checkout_id,
-            'execute' => true,
-            'order_id' => $order_id,
-            'order_key' => $order->get_order_key(),
+            'order_id'    => $order_id,
+            'order_key'   => $order->get_order_key(),
         ];
     }
 

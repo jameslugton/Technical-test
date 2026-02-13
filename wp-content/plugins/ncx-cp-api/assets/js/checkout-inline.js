@@ -410,7 +410,7 @@
             } else if (json.execute) {
                 // Success with execute flag – trigger payment (nochexapi: pciFormSubmit).
                 log('NCX: payment trigger – executing wpwl');
-                executePayment(json);
+                executePayment();
                 $.scroll_to_notices($('#ncx-cp-inline-frame'));
                 $('#ncxCpBtnReplace').remove();
                 $('#place_order').show();
@@ -444,35 +444,32 @@
      * Execute payment via OPP widget.
      * Handles both new card (wpwl-container-card) and saved card (wpwl-container-registration).
      * Mirrors nochexapi's dual-container check.
+     * No redirect fallback — server returns redirect:false (same as nochexapi).
      */
-    function executePayment(json) {
+    function executePayment() {
         if (window.wpwl && typeof window.wpwl.executePayment === 'function') {
             try {
                 // Check for saved card first (nochexapi pattern).
                 if ($('.wpwl-container-registration').is(':visible')) {
                     log('NCX: executing payment via saved card container');
                     window.wpwl.executePayment('wpwl-container-registration');
-                } else {
+                } else if ($('.wpwl-container-card').length) {
                     log('NCX: executing payment via card container');
                     window.wpwl.executePayment('wpwl-container-card');
+                } else {
+                    log('NCX: no wpwl container found in DOM');
+                    state.submitting = false;
+                    unblockForm();
                 }
             } catch (e) {
                 log('NCX: executePayment error', e);
                 state.submitting = false;
-                // Fallback: redirect to order-pay if available.
-                if (json && json.redirect) {
-                    log('NCX: falling back to redirect after executePayment error');
-                    window.location = json.redirect;
-                }
+                unblockForm();
             }
         } else {
             log('NCX: wpwl.executePayment not available – widget may not have loaded');
             state.submitting = false;
-            // Fallback: redirect to order-pay page so user can pay there.
-            if (json && json.redirect) {
-                log('NCX: falling back to redirect');
-                window.location = json.redirect;
-            }
+            unblockForm();
         }
     }
 
