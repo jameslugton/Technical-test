@@ -347,14 +347,20 @@ class NCX_CP_API_Gateway extends WC_Payment_Gateway {
         $order->save();
 
         // Tell JS to execute the already-mounted widget (card fields are already filled).
-        // redirect = false — same as nochexapi's orderStatusHandler('pending').
-        // Our JS handler (checkout_place_order) always intercepts and makes its
-        // own fetch(); WC's checkout.js never follows the redirect.  Using false
-        // prevents WC from ever sending the customer to order-pay (which would
-        // show a SECOND card form).
+        //
+        // redirect MUST be a valid URL string — WC's checkout.js does
+        //   result.redirect.indexOf('https://') which throws a TypeError
+        //   if redirect is boolean false.  We set it to the order-received
+        //   page as a SAFE FALLBACK: if our JS handler fails to intercept
+        //   (e.g. Block checkout, timing), WC lands the customer on the
+        //   thank-you page in 'pending' status and the OPP server-to-server
+        //   notification will complete the order.
+        //
+        // Our JS handler (checkout_place_order) checks for 'execute: true'
+        // and calls wpwl.executePayment() instead of following the redirect.
         return [
             'result'   => 'success',
-            'redirect' => false,
+            'redirect' => $this->get_return_url($order),
             'refresh'  => false,
             'reload'   => false,
             'pending'  => true,

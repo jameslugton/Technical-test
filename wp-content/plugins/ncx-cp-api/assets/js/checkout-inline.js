@@ -437,14 +437,28 @@
     }
 
     // Bind to GENERIC checkout_place_order – same event nochexapi uses.
+    // nochexapi binds inside jQuery(function(){ ... }) i.e. DOM-ready,
+    // ensuring the form element exists.  We do the same.
     // nochexapi: checkout_form.on('checkout_place_order', nochexapiCardsHandoff)
-    $('form.checkout').on('checkout_place_order', handlePlaceOrder);
+    $(function () {
+        var $checkoutForm = $('form.woocommerce-checkout');
+        if (!$checkoutForm.length) {
+            $checkoutForm = $('form.checkout');
+        }
+        if ($checkoutForm.length) {
+            $checkoutForm.on('checkout_place_order', handlePlaceOrder);
+            log('NCX: checkout_place_order bound on DOM ready');
+        } else {
+            log('NCX: checkout form not found on DOM ready, will bind on updated_checkout');
+        }
+    });
 
     /**
      * Execute payment via OPP widget.
      * Handles both new card (wpwl-container-card) and saved card (wpwl-container-registration).
      * Mirrors nochexapi's dual-container check.
-     * No redirect fallback — server returns redirect:false (same as nochexapi).
+     * Server returns a real redirect URL as fallback, but when 'execute' is true
+     * our JS calls this function instead of following the redirect.
      */
     function executePayment() {
         if (window.wpwl && typeof window.wpwl.executePayment === 'function') {
@@ -494,7 +508,12 @@
             log('NCX: skipping – payment in progress');
         }
         // Re-bind to the (possibly recreated) form element.
-        $('form.checkout').off('checkout_place_order', handlePlaceOrder).on('checkout_place_order', handlePlaceOrder);
+        // Use form.woocommerce-checkout first (matches nochexapi), fallback to form.checkout.
+        var $rebindForm = $('form.woocommerce-checkout');
+        if (!$rebindForm.length) {
+            $rebindForm = $('form.checkout');
+        }
+        $rebindForm.off('checkout_place_order', handlePlaceOrder).on('checkout_place_order', handlePlaceOrder);
     });
 
     // Fallback for page load.
